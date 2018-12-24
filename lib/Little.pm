@@ -52,8 +52,8 @@ sub calc {
 			}
 		}
 
-		print "Working with matrix:\n";
-		$min_node->print;
+		#print "Working with matrix:\n";
+		#$min_node->print;
 		$min_node->substruct;
 
 		splice @{$self->nodes}, $slice_num, 1; #выкидываем узел из массива, т.к. начали над ним работу
@@ -67,26 +67,26 @@ sub calc {
 			));
 
 		$new_node->substruct;
-		print "fine: $fine i: $chosen_i j: $chosen_j\n";
+		#print "fine: $fine i: $chosen_i j: $chosen_j\n";
 		$min_node->{_low_border} += $fine;
 
 		$self->push_nodes($new_node, $min_node);
 
-		print "result. new node:\n";
-		$new_node->print;
-		print "second (from min):\n";
-		$min_node->print;
+		#print "result. new node:\n";
+		#$new_node->print;
+		#print "second (from min):\n";
+		#$min_node->print;
 
 		if (scalar @{$new_node->matrix} < 4) {
-			print "THE END MF\n";
-			$new_node->print;
+			#print "THE END MF\n";
+			#$new_node->print;
 			$result = $new_node;
 			last;
 		}
 
 		if (scalar @{$min_node->matrix} < 4) {
-			print "THE END MF\n";
-			$min_node->print;
+			#print "THE END MF\n";
+			#$min_node->print;
 			$result = $min_node;
 			last;
 		}
