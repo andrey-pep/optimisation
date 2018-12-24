@@ -31,9 +31,10 @@ my $default_matrix = [];#[
 #];
 
 my $points = [];
+push @$points, {x => 0, y => 0};
 
 my $mw = MainWindow->new;
-$mw->geometry("700x500");
+$mw->geometry("700x600");
 $mw->title("Optimisation");
  
 my $main_frame = $mw->Frame()->pack(-side => 'top', -fill => 'x'); 
@@ -199,47 +200,74 @@ sub print_result_to_window {
 	my $blue = $img->colorAllocate(0,0,255);
 	my $black = $img->colorAllocate(0,0,0);
 
-	my $scale = (RESULT_WIDTH - POINT_SIZE) / $max_value;
+	my $scale = (RESULT_WIDTH - POINT_SIZE) / ($max_value + 1);
 
 	my $etap = 1;
-warn Dumper($answer);
+
+	my $x_line = GD::Arrow::Full->new( 
+	    -X2    => $scale, 
+	    -Y2    => RESULT_HEIGTH - $scale, 
+	    -X1    => RESULT_WIDTH, 
+	    -Y1    => RESULT_HEIGTH - $scale, 
+	    -WIDTH => 2,
+	);
+	$img->filledPolygon($x_line, $blue);
+	$img->polygon($x_line, $blue);
+
+	my $y_line = GD::Arrow::Full->new( 
+	    -X2    => $scale, 
+	    -Y2    => RESULT_HEIGTH - $scale, 
+	    -X1    => $scale, 
+	    -Y1    => 0, 
+	    -WIDTH => 2,
+	);
+	$img->filledPolygon($y_line, $blue);
+	$img->polygon($y_line, $blue);
+
+	for my $branch(@$answer) {
+		$img->arc(($points->[$branch->[0] - 1]->{x} + 1) * $scale, RESULT_HEIGTH - ($points->[$branch->[0] - 1]->{y} + 1) * $scale,POINT_SIZE,POINT_SIZE,0,360,$blue);
+		$img->fill(($points->[$branch->[0] - 1]->{x} + 1) * $scale - 5, RESULT_HEIGTH - ($points->[$branch->[0] - 1]->{y} + 1) * $scale - 5, $blue);
+		$etap++;
+	}
+	$etap = 1;
 	for my $branch (@$answer) {
 		#warn Dumper($points->[$branch->[0] - 1]->{x} * $scale);
 		#warn Dumper($points->[$branch->[0] - 1]->{y} * $scale);	
-		$img->arc($points->[$branch->[0] - 1]->{x} * $scale, 500 - $points->[$branch->[0] - 1]->{y} * $scale,POINT_SIZE,POINT_SIZE,0,360,$blue);
-		
+
 		my $arrow = GD::Arrow::Full->new( 
-			-X2		=>	$points->[$branch->[0] - 1]->{x} * $scale,
-			-Y2 	=>	500 -  $points->[$branch->[0] - 1]->{y} * $scale,
-			-X1 	=>	$points->[$branch->[1] - 1]->{x} * $scale,
-			-Y1		=>	500 - $points->[$branch->[0] - 1]->{y} * $scale,
-			-WIDTH 	=>	2,
+			-X2		=>	($points->[$branch->[0] - 1]->{x} + 1) * $scale,
+			-Y2 	=>	RESULT_HEIGTH -  ($points->[$branch->[0] - 1]->{y} + 1) * $scale,
+			-X1 	=>	($points->[$branch->[1] - 1]->{x} + 1) * $scale,
+			-Y1		=>	RESULT_HEIGTH - ($points->[$branch->[0] - 1]->{y} + 1)* $scale,
+			-WIDTH 	=>	4,
 
 		);	
 
 		$img->polygon($arrow, $red);
+		$img->filledPolygon($arrow, $red);
 
 		my $arrow2 = GD::Arrow::Full->new( 
-		    -X2    => $points->[$branch->[1] - 1]->{x} * $scale, 
-		    -Y2    => 500 - $points->[$branch->[0] - 1]->{y} * $scale, 
-		    -X1    => $points->[$branch->[1] - 1]->{x} * $scale, 
-		    -Y1    => 500 - $points->[$branch->[1] - 1]->{y} * $scale, 
-		    -WIDTH => 2,
+		    -X2    => ($points->[$branch->[1] - 1]->{x} + 1) * $scale, 
+		    -Y2    => RESULT_HEIGTH - ($points->[$branch->[0] - 1]->{y} + 1) * $scale, 
+		    -X1    => ($points->[$branch->[1] - 1]->{x} + 1)* $scale, 
+		    -Y1    => RESULT_HEIGTH - ($points->[$branch->[1] - 1]->{y} + 1) * $scale, 
+		    -WIDTH => 4,
 		);
 
 		$img->polygon($arrow2, $red);
+		$img->filledPolygon($arrow2, $red);
 
-		$img->string(gdLargeFont, $points->[$branch->[1] - 1]->{x} * $scale + 15, 500 - $points->[$branch->[0] - 1]->{y} * $scale + 15, $etap, $blue);
+		$img->string(gdLargeFont, ($points->[$branch->[1] - 1]->{x} + 1) * $scale - 15, RESULT_HEIGTH - ($points->[$branch->[0] - 1]->{y} + 1) * $scale - 15, $etap, $blue);
 		$etap++;
 	}
 
-	for (my $i = 0; $i <= $max_value; $i++) {
+	for (my $i = 0; $i <= $max_value + 1; $i++) {
 		$img->line(0, RESULT_WIDTH - $i*$scale, 20, RESULT_HEIGTH - $i* $scale, $blue);
 		$img->string(gdLargeFont, 10, RESULT_WIDTH - ($i - 10) * $scale, "X" . $i, $blue);
 		$img->line($i*$scale, RESULT_HEIGTH, $i* $scale,RESULT_HEIGTH - 20, $blue) if $i != 0;
 	}
 
-	for (my $i = 0; $i <= $max_value; $i++) {
+	for (my $i = 0; $i <= $max_value + 1; $i++) {
 		$img->dashedLine(0, RESULT_HEIGTH - $i*$scale, RESULT_WIDTH, RESULT_HEIGTH - $i* $scale, $blue);
 		$img->dashedLine($i*$scale, RESULT_HEIGTH, $i* $scale,0, $blue) if $i != 0;
 	}
@@ -247,6 +275,8 @@ warn Dumper($answer);
 	open(my $fh, ">", "tmp.png");
 	print $fh $img->png;
 	close($fh);
-	$mw->Photo(-format => 'png', -file => "tmp.png");
+	my $shot = $mw->Photo(-format => 'png', -file => "tmp.png");
+	$right_frame->Button(-text => 'Exit', -command => sub { exit },
+            -image => $shot)->pack(-side => "top");
 	$mw->MainLoop;
 }
