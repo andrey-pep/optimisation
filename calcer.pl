@@ -17,6 +17,9 @@ use GD;
 use GD::Arrow;
 use Tk::PNG;
 use GD::Image::AnimatedGif;
+use Imager;
+use Imager::File::GIF;
+use Tk::Animation;
 
 my $max_value = 0;
 
@@ -342,15 +345,17 @@ sub print_result_to_window {
 		$etap++;
 	}
 
-	open ($fh, ">", "result.gif");
-	my $gif_img = GD::Image->new(RESULT_WIDTH, RESULT_HEIGTH)->animated_gif_easy(0,0,\@for_gif_files,$frame_handler);
-	print $fh $gif_img;
-	close($fh);
+	my $result_gif = Image::Magick->new();
+	for my $file (@for_gif_files) {
+		$result_gif->Read(filename=>"$file");
+	}
+	$result_gif->Write(filename=>"animated.gif", delay=>"100");
 
 	$result_win = $mw->Toplevel;
-	my $shot = $result_win->Photo(-format => 'png', -file => "tmp.png");
+	my $shot = $result_win->Animation(-format => 'gif', -file => "animated.gif");
 	my $resutl_frame = $result_win->Frame(-background => "white")->pack(-fill => 'y');
 	$resutl_frame->Button(-image => $shot)->pack();
+	$shot->start_animation(1000);
 	$clear_image = $bottom_frame->Button(-text => "Новый рассчет", 
                           -command => \&clear_image)->pack(-side => "bottom");
 }
