@@ -16,6 +16,7 @@ use Image::Magick::Q16;
 use GD;
 use GD::Arrow;
 use Tk::PNG;
+use GD::Image::AnimatedGif;
 
 my $max_value = 0;
 
@@ -34,23 +35,31 @@ my $points = [];
 push @$points, {x => 0, y => 0};
 
 my $mw = MainWindow->new;
-$mw->geometry("700x600");
+$mw->geometry("800x600");
 $mw->title("Optimisation");
- 
+my $shot;
+my $clear_image;
+my $result_win;
+
 my $main_frame = $mw->Frame()->pack(-side => 'top', -fill => 'x'); 
-my $top_frame = $main_frame->Frame(-background => "red")->pack(-side => 'top',
+my $top_frame = $main_frame->Frame(-background => "white")->pack(-side => 'top',
                                                                    -fill => 'x');
-my $left_frame = $main_frame->Frame(-background => "black")->pack(-side => 'left',                                                                   -fill => 'y');
+my $bottom_frame = $main_frame->Frame(-background => "white")->pack(-side => "bottom", -fill => 'y');
+my $left_frame = $main_frame->Frame(-background => "white")->pack(-side => 'left',  -fill => 'y');
 my $right_frame = $main_frame->Frame(-background => "white")->pack(-side => "right");
+my $file_frame = $main_frame->Frame(-background => "black")->pack(-side => "left", -fill => 'y');
+my $add_file_button = $file_frame->Button(-text => "Выбрать файл для обработки",
+							-command => \&find_file)->pack(-side => "right");
 
 $top_frame->Label(-text => "Оптимизация процесса сверления", 
-                                   -background => "red")->pack(-side => "top");
-$left_frame->Label(-text => "Введите координаты точки", -background => "black", 
-                                    -foreground => "yellow")->pack(-side => "left");
+                                   -background => "white")->pack(-side => "top");
+$left_frame->Label(-text => "Введите координаты точки", -background => "white", 
+                                    -foreground => "black")->pack(-side => "left");
+
 my $copy_entry_x = $left_frame->Entry(-background => "white", 
-                             -foreground => "red")->pack(-side => "left");
+                             -foreground => "black")->pack(-side => "left");
 my $copy_entry_y = $left_frame->Entry(-background => "white", 
-                             -foreground => "red")->pack(-side => "left");
+                             -foreground => "black")->pack(-side => "left");
 my $copy_button = $left_frame->Button(-text => "Добавить точку", 
                            -command => \&copy_entry)->pack(-side => "right");
 my $clear_text = $right_frame->Button(-text => "Clear Text", 
@@ -60,14 +69,19 @@ my $paste_text = $right_frame->Text(-background => "white",
 
 sub clear_entry {
   $paste_text->delete('0.0', 'end');
+  splice @$points, 0, scalar @$points;
 }
  
+sub find_file {
+
+}
+
 sub copy_entry {
   my $copied_x = $copy_entry_x->get();
   my $copied_y = $copy_entry_y->get();
 
-  unless (looks_like_number($copied_x) or looks_like_number($copied_y)) {
-  	$mw->messageBox(-message => "Введите положение отверстий в числовом формате!", -type => "ok");
+  unless (looks_like_number($copied_x) && looks_like_number($copied_y) && $copied_x >= 0 && $copied_y >= 0) {
+  	$mw->messageBox(-message => "Введите положение отверстий в числовом формате (неотрицательные числа)!", -type => "ok");
   	return;
   }
 
@@ -132,7 +146,7 @@ sub find_answer_in_result {
 	my ($result) = @_;
 
 	my @all_the_path = (@{$result->path});
-$result->print;
+
 	if ($result->matrix->[1]->[1] != INFINITY) {
 		push @all_the_path, [$result->matrix->[0]->[1], $result->matrix->[1]->[0]];
 		push @all_the_path, [$result->matrix->[0]->[2], $result->matrix->[2]->[0]];
@@ -192,6 +206,12 @@ sub printer {					#простой вывод матрицы без всего
 	}
 }
 
+my $frame_handler = sub {
+    my $frm = shift;
+    my $imgx = GD::Image->new(shift) or die $!;
+    $frm->copy($imgx,0,0,0,0,$frm->getBounds);
+};
+
 sub print_result_to_window {
 	my ($answer) = @_;
 	my $img = new GD::Image(RESULT_WIDTH,RESULT_HEIGTH);
@@ -234,28 +254,32 @@ sub print_result_to_window {
 		#warn Dumper($points->[$branch->[0] - 1]->{x} * $scale);
 		#warn Dumper($points->[$branch->[0] - 1]->{y} * $scale);	
 
-		my $arrow = GD::Arrow::Full->new( 
-			-X2		=>	($points->[$branch->[0] - 1]->{x} + 1) * $scale,
-			-Y2 	=>	RESULT_HEIGTH -  ($points->[$branch->[0] - 1]->{y} + 1) * $scale,
-			-X1 	=>	($points->[$branch->[1] - 1]->{x} + 1) * $scale,
-			-Y1		=>	RESULT_HEIGTH - ($points->[$branch->[0] - 1]->{y} + 1)* $scale,
-			-WIDTH 	=>	4,
+		if ($points->[$branch->[0] - 1]->{x} != $points->[$branch->[1] - 1]->{x}) {
+			my $arrow = GD::Arrow::Full->new( 
+				-X2		=>	($points->[$branch->[0] - 1]->{x} + 1) * $scale,
+				-Y2 	=>	RESULT_HEIGTH -  ($points->[$branch->[0] - 1]->{y} + 1) * $scale,
+				-X1 	=>	($points->[$branch->[1] - 1]->{x} + 1) * $scale,
+				-Y1		=>	RESULT_HEIGTH - ($points->[$branch->[0] - 1]->{y} + 1)* $scale,
+				-WIDTH 	=>	4,
 
-		);	
+			);	
 
-		$img->polygon($arrow, $red);
-		$img->filledPolygon($arrow, $red);
+			$img->polygon($arrow, $red);
+			$img->filledPolygon($arrow, $red);
+		}
 
-		my $arrow2 = GD::Arrow::Full->new( 
-		    -X2    => ($points->[$branch->[1] - 1]->{x} + 1) * $scale, 
-		    -Y2    => RESULT_HEIGTH - ($points->[$branch->[0] - 1]->{y} + 1) * $scale, 
-		    -X1    => ($points->[$branch->[1] - 1]->{x} + 1)* $scale, 
-		    -Y1    => RESULT_HEIGTH - ($points->[$branch->[1] - 1]->{y} + 1) * $scale, 
-		    -WIDTH => 4,
-		);
+		if ($points->[$branch->[1] - 1]->{y} != $points->[$branch->[0] - 1]->{y}) {
+			my $arrow2 = GD::Arrow::Full->new( 
+			    -X2    => ($points->[$branch->[1] - 1]->{x} + 1) * $scale, 
+			    -Y2    => RESULT_HEIGTH - ($points->[$branch->[0] - 1]->{y} + 1) * $scale, 
+			    -X1    => ($points->[$branch->[1] - 1]->{x} + 1)* $scale, 
+			    -Y1    => RESULT_HEIGTH - ($points->[$branch->[1] - 1]->{y} + 1) * $scale, 
+			    -WIDTH => 4,
+			);
 
-		$img->polygon($arrow2, $red);
-		$img->filledPolygon($arrow2, $red);
+			$img->polygon($arrow2, $red);
+			$img->filledPolygon($arrow2, $red);
+		}
 
 		$img->string(gdLargeFont, ($points->[$branch->[1] - 1]->{x} + 1) * $scale - 15, RESULT_HEIGTH - ($points->[$branch->[0] - 1]->{y} + 1) * $scale - 15, $etap, $blue);
 		$etap++;
@@ -275,8 +299,67 @@ sub print_result_to_window {
 	open(my $fh, ">", "tmp.png");
 	print $fh $img->png;
 	close($fh);
-	my $shot = $mw->Photo(-format => 'png', -file => "tmp.png");
-	$right_frame->Button(-text => 'Exit', -command => sub { exit },
-            -image => $shot)->pack(-side => "top");
-	$mw->MainLoop;
+
+	$etap = 1;
+
+	my @for_gif_files;
+
+	for my $branch (@$answer) {
+		my $img2 = newFromPng GD::Image('tmp.png');
+		if ($points->[$branch->[0] - 1]->{x} != $points->[$branch->[1] - 1]->{x}) {
+			my $arrow = GD::Arrow::Full->new( 
+				-X2		=>	($points->[$branch->[0] - 1]->{x} + 1) * $scale,
+				-Y2 	=>	RESULT_HEIGTH -  ($points->[$branch->[0] - 1]->{y} + 1) * $scale,
+				-X1 	=>	($points->[$branch->[1] - 1]->{x} + 1) * $scale,
+				-Y1		=>	RESULT_HEIGTH - ($points->[$branch->[0] - 1]->{y} + 1)* $scale,
+				-WIDTH 	=>	4,
+
+			);	
+
+			$img2->polygon($arrow, $blue);
+			$img2->filledPolygon($arrow, $blue);
+		}
+
+		if ($points->[$branch->[1] - 1]->{y} != $points->[$branch->[0] - 1]->{y}) {
+			my $arrow2 = GD::Arrow::Full->new( 
+			    -X2    => ($points->[$branch->[1] - 1]->{x} + 1) * $scale, 
+			    -Y2    => RESULT_HEIGTH - ($points->[$branch->[0] - 1]->{y} + 1) * $scale, 
+			    -X1    => ($points->[$branch->[1] - 1]->{x} + 1)* $scale, 
+			    -Y1    => RESULT_HEIGTH - ($points->[$branch->[1] - 1]->{y} + 1) * $scale, 
+			    -WIDTH => 4,
+			);
+
+			$img2->polygon($arrow2, $blue);
+			$img2->filledPolygon($arrow2, $blue);
+		}
+
+		$img2->string(gdLargeFont, ($points->[$branch->[1] - 1]->{x} + 1) * $scale - 15, RESULT_HEIGTH - ($points->[$branch->[0] - 1]->{y} + 1) * $scale - 15, $etap, $blue);
+		open(my $fh, ">", "tmp$etap.png");
+
+		print $fh $img2->png;
+		close($fh);
+		push @for_gif_files, "tmp$etap.png";
+		$etap++;
+	}
+
+	open ($fh, ">", "result.gif");
+	my $gif_img = GD::Image->new(RESULT_WIDTH, RESULT_HEIGTH)->animated_gif_easy(0,0,\@for_gif_files,$frame_handler);
+	print $fh $gif_img;
+	close($fh);
+
+	$result_win = $mw->Toplevel;
+	my $shot = $result_win->Photo(-format => 'png', -file => "tmp.png");
+	my $resutl_frame = $result_win->Frame(-background => "white")->pack(-fill => 'y');
+	$resutl_frame->Button(-image => $shot)->pack();
+	$clear_image = $bottom_frame->Button(-text => "Новый рассчет", 
+                          -command => \&clear_image)->pack(-side => "bottom");
+}
+
+sub clear_image {
+	clear_entry();
+	push @$points, {x => 0, y => 0};
+	$bottom_frame->update();
+	$bottom_frame->destroy();
+	$result_win->destroy;
+	$bottom_frame = $main_frame->Frame(-background => "white")->pack(-side => "bottom", -fill => 'y');
 }
