@@ -20,6 +20,7 @@ use GD::Image::AnimatedGif;
 use Imager;
 use Imager::File::GIF;
 use Tk::Animation;
+use Tk::ROText;
 
 my $max_value = 0;
 
@@ -50,25 +51,23 @@ my $top_frame = $main_frame->Frame(-background => "white")->pack(-side => 'top',
 my $bottom_frame = $main_frame->Frame(-background => "white")->pack(-side => "bottom", -fill => 'y');
 my $left_frame = $main_frame->Frame(-background => "white")->pack(-side => 'left',  -fill => 'y');
 my $right_frame = $main_frame->Frame(-background => "white")->pack(-side => "right");
-my $file_frame = $main_frame->Frame(-background => "black")->pack(-side => "left", -fill => 'y');
-my $add_file_button = $file_frame->Button(-text => "Выбрать файл для обработки",
-							-command => \&find_file)->pack(-side => "right");
 
 $top_frame->Label(-text => "Оптимизация процесса сверления", 
                                    -background => "white")->pack(-side => "top");
-$left_frame->Label(-text => "Введите координаты точки", -background => "white", 
-                                    -foreground => "black")->pack(-side => "left");
 
-my $copy_entry_x = $left_frame->Entry(-background => "white", 
-                             -foreground => "black")->pack(-side => "left");
-my $copy_entry_y = $left_frame->Entry(-background => "white", 
-                             -foreground => "black")->pack(-side => "left");
-my $copy_button = $left_frame->Button(-text => "Добавить точку", 
-                           -command => \&copy_entry)->pack(-side => "right");
+my $copy_entry_x;
+my $copy_entry_y;
+my $copy_button;
+
 my $clear_text = $right_frame->Button(-text => "Clear Text", 
                           -command => \&clear_entry)->pack(-side => "top");
-my $paste_text = $right_frame->Text(-background => "white", 
+my $paste_text = $right_frame->ROText(-background => "white", 
                             -foreground => "black")->pack(-side => "top");
+
+my $menu = $left_frame->Menubutton(-text => 'Способ введения координат', -tearoff => 'false')->pack(-side => 'top');
+
+$menu->command(-label => 'Открыть файл', -command => \&find_file);
+$menu->command(-label => 'Ввести вручную', -command => \&input_by_self);
 
 sub clear_entry {
   $paste_text->delete('0.0', 'end');
@@ -76,7 +75,54 @@ sub clear_entry {
 }
  
 sub find_file {
+	my $file = $main_frame->getOpenFile();
+	my $yesno_button = $mw->messageBox(-message => "Использовать файл $file?",
+                                        -type => "yesno", -icon => "question");
+	$copy_entry_x->destroy() if $copy_entry_x;
+	$copy_entry_y->destroy() if $copy_entry_y;
+	$copy_button->destroy() if $copy_button;
 
+	open(my $fh, "<", $file);
+	if ($@) {
+		$mw->messageBox(-message => "Проблема при открытии файла: $!", -type => "ok");
+		return;
+	}
+
+	while(<$fh>) {
+		chomp $_;
+		my ($x, $y) = split(/\t/, $_);
+		unless ($x || $y) {
+		  	$mw->messageBox(-message => "Для ввода данных используйте формат tsv", -type => "ok");
+		  	return;
+		}
+		unless (looks_like_number($x) && looks_like_number($y) && $x >= 0 && $y >= 0) {
+		  	$mw->messageBox(-message => "Введите положение отверстий в числовом формате (неотрицательные числа)!", -type => "ok");
+		  	return;
+		}
+
+		if($max_value < $x) {
+		  	$max_value = $x;
+		}
+		if($max_value < $y) {
+			$max_value = $y;
+		}
+
+		$paste_text->insert("end", $x . ' : ' . $y . "\n");
+		push @$points, {x => $x, y => $y};
+	}
+}
+
+sub input_by_self {
+	$copy_entry_x->destroy() if $copy_entry_x;
+	$copy_entry_y->destroy() if $copy_entry_y;
+	$copy_button->destroy() if $copy_button;
+
+	$copy_entry_x = $left_frame->Entry(-background => "white", 
+	                             -foreground => "black")->pack(-side => "left");
+	$copy_entry_y = $left_frame->Entry(-background => "white", 
+	                             -foreground => "black")->pack(-side => "left");
+	$copy_button = $left_frame->Button(-text => "Добавить точку", 
+	                           -command => \&copy_entry)->pack(-side => "right");
 }
 
 sub copy_entry {
@@ -121,7 +167,6 @@ sub start_colculations {
 	my $answer = find_answer_in_result($result);
 
 	print_result_to_window($answer);
-	#warn Dumper($result);
 }
 
 sub create_new_task {				#создание новой задачи
@@ -223,6 +268,8 @@ sub print_result_to_window {
 	my $blue = $img->colorAllocate(0,0,255);
 	my $black = $img->colorAllocate(0,0,0);
 
+	open (my $result_fh, ">", FILE_RESULT_NAME) or $mw->messageBox(-message => "Не удалось создать файл результат: $!", -type => "ok");
+
 	my $scale = (RESULT_WIDTH - POINT_SIZE) / ($max_value + 1);
 
 	my $etap = 1;
@@ -247,16 +294,16 @@ sub print_result_to_window {
 	$img->filledPolygon($y_line, $blue);
 	$img->polygon($y_line, $blue);
 
+	print $result_fh "1->\n";
 	for my $branch(@$answer) {
 		$img->arc(($points->[$branch->[0] - 1]->{x} + 1) * $scale, RESULT_HEIGTH - ($points->[$branch->[0] - 1]->{y} + 1) * $scale,POINT_SIZE,POINT_SIZE,0,360,$blue);
 		$img->fill(($points->[$branch->[0] - 1]->{x} + 1) * $scale - 5, RESULT_HEIGTH - ($points->[$branch->[0] - 1]->{y} + 1) * $scale - 5, $blue);
 		$etap++;
+		print $result_fh $branch->[1] . "->\n";
 	}
-	$etap = 1;
-	for my $branch (@$answer) {
-		#warn Dumper($points->[$branch->[0] - 1]->{x} * $scale);
-		#warn Dumper($points->[$branch->[0] - 1]->{y} * $scale);	
 
+	$etap = 1;
+	for my $branch (@$answer) {	
 		if ($points->[$branch->[0] - 1]->{x} != $points->[$branch->[1] - 1]->{x}) {
 			my $arrow = GD::Arrow::Full->new( 
 				-X2		=>	($points->[$branch->[0] - 1]->{x} + 1) * $scale,
@@ -299,7 +346,7 @@ sub print_result_to_window {
 		$img->dashedLine($i*$scale, RESULT_HEIGTH, $i* $scale,0, $blue) if $i != 0;
 	}
 
-	open(my $fh, ">", "tmp.png");
+	open(my $fh, ">", TMP_FILE_NAME . FORMAT);
 	print $fh $img->png;
 	close($fh);
 
@@ -308,7 +355,7 @@ sub print_result_to_window {
 	my @for_gif_files;
 
 	for my $branch (@$answer) {
-		my $img2 = newFromPng GD::Image('tmp.png');
+		my $img2 = newFromPng GD::Image(TMP_FILE_NAME . FORMAT);
 		if ($points->[$branch->[0] - 1]->{x} != $points->[$branch->[1] - 1]->{x}) {
 			my $arrow = GD::Arrow::Full->new( 
 				-X2		=>	($points->[$branch->[0] - 1]->{x} + 1) * $scale,
@@ -337,25 +384,28 @@ sub print_result_to_window {
 		}
 
 		$img2->string(gdLargeFont, ($points->[$branch->[1] - 1]->{x} + 1) * $scale - 15, RESULT_HEIGTH - ($points->[$branch->[0] - 1]->{y} + 1) * $scale - 15, $etap, $blue);
-		open(my $fh, ">", "tmp$etap.png");
+		open(my $fh, ">", TMP_FILE_NAME . "$etap" . FORMAT);
 
 		print $fh $img2->png;
 		close($fh);
-		push @for_gif_files, "tmp$etap.png";
+		push @for_gif_files, TMP_FILE_NAME . "$etap" . FORMAT;
 		$etap++;
 	}
 
 	my $result_gif = Image::Magick->new();
 	for my $file (@for_gif_files) {
 		$result_gif->Read(filename=>"$file");
+		unlink $file;
 	}
-	$result_gif->Write(filename=>"animated.gif", delay=>"100");
+	$result_gif->Write(filename => GIF_NAME, delay => DELAY);
 
 	$result_win = $mw->Toplevel;
-	my $shot = $result_win->Animation(-format => 'gif', -file => "animated.gif");
+	$result_win->title("Результат");
+	my $shot = $result_win->Animation(-format => 'gif', -file => GIF_NAME);
 	my $resutl_frame = $result_win->Frame(-background => "white")->pack(-fill => 'y');
 	$resutl_frame->Button(-image => $shot)->pack();
 	$shot->start_animation(1000);
+	$resutl_frame->Label(-text => ($result_fh ? "Файл с результатом: " . FILE_RESULT_NAME . "\n" : "") . "Анимация результата: " . GIF_NAME);
 	$clear_image = $bottom_frame->Button(-text => "Новый рассчет", 
                           -command => \&clear_image)->pack(-side => "bottom");
 }
@@ -367,4 +417,5 @@ sub clear_image {
 	$bottom_frame->destroy();
 	$result_win->destroy;
 	$bottom_frame = $main_frame->Frame(-background => "white")->pack(-side => "bottom", -fill => 'y');
+	$max_value = 0;
 }
