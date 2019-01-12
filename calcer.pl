@@ -405,7 +405,9 @@ sub print_result_to_window {
 	my $resutl_frame = $result_win->Frame(-background => "white")->pack(-fill => 'y');
 	$resutl_frame->Button(-image => $shot)->pack();
 	$shot->start_animation(1000);
-	$resutl_frame->Label(-text => ($result_fh ? "Файл с результатом: " . FILE_RESULT_NAME . "\n" : "") . "Анимация результата: " . GIF_NAME);
+	my $result_text = $resutl_frame->ROText(-background => "white", 
+                            -foreground => "black")->pack(-side => "top");
+	$result_text->insert( "end", ($result_fh ? "Файл с результатом: " . FILE_RESULT_NAME . "\n" : "") . "Анимация результата: " . GIF_NAME);
 	$clear_image = $bottom_frame->Button(-text => "Новый рассчет", 
                           -command => \&clear_image)->pack(-side => "bottom");
 }
