@@ -96,7 +96,7 @@ sub find_file {
 			  	$mw->messageBox(-message => "Для ввода данных используйте формат tsv", -type => "ok");
 			  	return;
 			}
-			unless (leftooks_like_number($x) && looks_like_number($y) && $x >= 0 && $y >= 0) {
+			unless (looks_like_number($x) && looks_like_number($y) && $x >= 0 && $y >= 0) {
 			  	$mw->messageBox(-message => "Введите положение отверстий в числовом формате (неотрицательные числа)!", -type => "ok");
 			  	return;
 			}
