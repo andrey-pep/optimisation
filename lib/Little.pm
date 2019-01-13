@@ -11,8 +11,6 @@ use Constants;
 use Data::Dumper;
 use Node;
 
-my $max_depth = 0;
-
 sub nodes { return $_[0]->{_nodes} }
 sub main_matrix { return $_[0]->{_main_matrix} }
 
@@ -41,8 +39,7 @@ sub calc {
 	my $work_matrix = $self->main_matrix->copy_matrix;
 	my $first_node = Node->new(matrix => $work_matrix);
 	$self->push_nodes($first_node);
-$self->nodes->[0]->print;
-my $iter = 0;	
+
 	while(1) {
 		my $min_node;
 		my $slice_num = 0;
