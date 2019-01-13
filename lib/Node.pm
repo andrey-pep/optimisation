@@ -142,8 +142,8 @@ sub copy_matrix_with_except {		#копирование матрицы с иск�
 	my $new_matrix = [];
 	my $k = 0;
 	my $l = 0;
-	my $i_new_except = 0;
-	my $j_new_except = 0;
+	my $i_new_except = $self->matrix->[0]->[$j_except];
+	my $j_new_except = $self->matrix->[$i_except]->[0];
 
 	for (my $i = 0, $k = 0; $i < scalar @{$self->matrix}; $i++) {
 		next if $i == $i_except;
@@ -155,8 +155,8 @@ sub copy_matrix_with_except {		#копирование матрицы с иск�
 	}
 
 	my ($tmp_j, $tmp_i);
-	my ($i_has_infinity, $j_has_ininity) = (0, 0);
 
+	my ($i_has_infinity, $j_has_ininity) = (0, 0);
 	for (my $i = 1; $i < scalar @{$new_matrix}; $i++) {
 		for (my $j = 1; $j< scalar @{$new_matrix}; $j++) {
 			if ($new_matrix->[$i]->[$j] == INFINITY) {
@@ -185,7 +185,9 @@ sub copy_matrix_with_except {		#копирование матрицы с иск�
 		$j_has_ininity = 0;
 	}
 
-	$new_matrix->[$tmp_i]->[$tmp_j] = INFINITY;
+	if ($tmp_i && $tmp_j) {
+		$new_matrix->[$tmp_i]->[$tmp_j] = INFINITY;
+	}
 	$self->matrix->[$i_except]->[$j_except] = INFINITY;
 
 	return $new_matrix;
