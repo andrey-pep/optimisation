@@ -35,6 +35,7 @@ sub print {
 	}
 
 	print "low border: " . $self->low_border . "\n";
+	print "depth: " . $self->depth . "\n";
 	print "branches: " . join(",", map { sprintf("(%d, %d)", $_->[0], $_->[1] ) } @{$self->path}) . "\n";
 }
 
@@ -186,6 +187,7 @@ sub copy_matrix_with_except {		#копирование матрицы с иск�
 	}
 
 	$new_matrix->[$tmp_i]->[$tmp_j] = INFINITY;
+	$self->matrix->[$i_except]->[$j_except] = INFINITY;
 
 	return $new_matrix;
 }
