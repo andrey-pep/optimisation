@@ -88,27 +88,29 @@ sub find_file {
 		return;
 	}
 
-	while(<$fh>) {
-		chomp $_;
-		my ($x, $y) = split(/\t/, $_);
-		unless ($x || $y) {
-		  	$mw->messageBox(-message => "Для ввода данных используйте формат tsv", -type => "ok");
-		  	return;
-		}
-		unless (looks_like_number($x) && looks_like_number($y) && $x >= 0 && $y >= 0) {
-		  	$mw->messageBox(-message => "Введите положение отверстий в числовом формате (неотрицательные числа)!", -type => "ok");
-		  	return;
-		}
+	if ($yesno_button eq 'Yes') {
+		while(<$fh>) {
+			chomp $_;
+			my ($x, $y) = split(/\t/, $_);
+			unless ($x || $y) {
+			  	$mw->messageBox(-message => "Для ввода данных используйте формат tsv", -type => "ok");
+			  	return;
+			}
+			unless (leftooks_like_number($x) && looks_like_number($y) && $x >= 0 && $y >= 0) {
+			  	$mw->messageBox(-message => "Введите положение отверстий в числовом формате (неотрицательные числа)!", -type => "ok");
+			  	return;
+			}
 
-		if($max_value < $x) {
-		  	$max_value = $x;
-		}
-		if($max_value < $y) {
-			$max_value = $y;
-		}
+			if($max_value < $x) {
+			  	$max_value = $x;
+			}
+			if($max_value < $y) {
+				$max_value = $y;
+			}
 
-		$paste_text->insert("end", $x . ' : ' . $y . "\n");
-		push @$points, {x => $x, y => $y};
+			$paste_text->insert("end", $x . ' : ' . $y . "\n");
+			push @$points, {x => $x, y => $y};
+		}
 	}
 }
 
@@ -337,7 +339,7 @@ sub print_result_to_window {
 
 	for (my $i = 0; $i <= $max_value + 1; $i++) {
 		$img->line(0, RESULT_WIDTH - $i*$scale, 20, RESULT_HEIGTH - $i* $scale, $blue);
-		$img->string(gdLargeFont, 10, RESULT_WIDTH - ($i - 10) * $scale, "X" . $i, $blue);
+		#$img->string(gdLargeFont, 10, RESULT_WIDTH - ($i - 10) * $scale, "X" . $i, $blue);
 		$img->line($i*$scale, RESULT_HEIGTH, $i* $scale,RESULT_HEIGTH - 20, $blue) if $i != 0;
 	}
 

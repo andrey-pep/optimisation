@@ -39,7 +39,7 @@ sub calc {
 	my $work_matrix = $self->main_matrix->copy_matrix;
 	my $first_node = Node->new(matrix => $work_matrix);
 	$self->push_nodes($first_node);
-
+	
 	while(1) {
 		my $min_node;
 		my $slice_num = 0;
@@ -67,15 +67,15 @@ sub calc {
 			));
 
 		$new_node->substruct;
-		#print "fine: $fine i: $chosen_i j: $chosen_j\n";
+	#	print "fine: $fine i: $chosen_i j: $chosen_j\n";
 		$min_node->{_low_border} += $fine;
 
 		$self->push_nodes($new_node, $min_node);
 
-		#print "result. new node:\n";
-		#$new_node->print;
-		#print "second (from min):\n";
-		#$min_node->print;
+	#	print "result. new node:\n";
+	#	$new_node->print;
+	#	print "second (from min):\n";
+	#	$min_node->print;
 
 		if (scalar @{$new_node->matrix} < 4) {
 			#print "THE END MF\n";
