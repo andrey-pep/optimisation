@@ -52,8 +52,8 @@ sub calc {
 			}
 		}
 
-		print "Working with matrix:\n";
-		$min_node->print;
+		#print "Working with matrix:\n";
+		#$min_node->print;
 		splice @{$self->nodes}, $slice_num, 1; #выкидываем узел из массива, т.к. начали над ним работу
 
 		$min_node->substruct;
