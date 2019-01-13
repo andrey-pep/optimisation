@@ -6,7 +6,7 @@ use utf8;
 
 require Exporter;
 our @ISA    = qw(Exporter);
-our @EXPORT = qw(INFINITY RESULT_WIDTH RESULT_HEIGTH POINT_SIZE INDENT TMP_FILE_NAME FORMAT GIF_NAME DELAY FILE_RESULT_NAME);
+our @EXPORT = qw(INFINITY RESULT_WIDTH RESULT_HEIGTH POINT_SIZE INDENT TMP_FILE_NAME FORMAT GIF_NAME DELAY FILE_RESULT_NAME FREQ);
 
 use constant INFINITY => -1;
 
@@ -19,3 +19,4 @@ use constant FORMAT => ".png";
 use constant GIF_NAME => "animated.gif";
 use constant DELAY => "100";
 use constant FILE_RESULT_NAME => "result.txt";
+use constant FREQ => 10;

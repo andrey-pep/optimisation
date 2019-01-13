@@ -76,6 +76,7 @@ sub clear_entry {
  
 sub find_file {
 	my $file = $main_frame->getOpenFile();
+	return unless $file;
 	my $yesno_button = $mw->messageBox(-message => "Использовать файл $file?",
                                         -type => "yesno", -icon => "question");
 	$copy_entry_x->destroy() if $copy_entry_x;
@@ -168,7 +169,7 @@ sub start_colculations {
 	my $result = calc_with_params($little_obj);
 	my $answer = find_answer_in_result($result);
 
-	print_result_to_window($answer);
+	print_result_to_window($answer, $result->low_border);
 }
 
 sub create_new_task {				#создание новой задачи
@@ -176,7 +177,7 @@ sub create_new_task {				#создание новой задачи
 
 	my $root_matrix = Node->new(matrix => $matrix);
 	my $root_copy = Node->new(matrix => $root_matrix->copy_matrix);
-
+$root_copy->print;
 	my $little_obj = Little->new(main_matrix => $root_copy);
 
 	return $little_obj;
@@ -211,12 +212,12 @@ sub find_answer_in_result {
 		for (my $j = 0; $j < scalar @$points; $j++) {
 			my $branch = $all_the_path[$j];
 			if ($branch->[0] == $next_position) {
-				$sorted_path[$i] = [$branch->[0], $branch->[1]];
+				$sorted_path[$i] = [$branch->[0], $branch->[1], $default_matrix->[$branch->[0]]->[$branch->[1]]];
 				$next_position = $branch->[1];
 				splice @all_the_path, $j, 1;
 				last;
 			} elsif($branch->[1] == $next_position) {
-				$sorted_path[$i] = [$branch->[1], $branch->[0]];
+				$sorted_path[$i] = [$branch->[1], $branch->[0], $default_matrix->[$branch->[1]]->[$branch->[0]]];
 				$next_position = $branch->[0];
 				splice @all_the_path, $j, 1;
 				last;
@@ -263,16 +264,18 @@ my $frame_handler = sub {
 };
 
 sub print_result_to_window {
-	my ($answer) = @_;
+	my ($answer, $low_border) = @_;
 	my $img = new GD::Image(RESULT_WIDTH,RESULT_HEIGTH);
 	my $white = $img->colorAllocate(255,255,255);
 	my $red = $img->colorAllocate(255,0,0);
 	my $blue = $img->colorAllocate(0,0,255);
 	my $black = $img->colorAllocate(0,0,0);
+	my $green = $img->colorAllocate(0,150,50);
 
 	open (my $result_fh, ">", FILE_RESULT_NAME) or $mw->messageBox(-message => "Не удалось создать файл результат: $!", -type => "ok");
 
 	my $scale = (RESULT_WIDTH - POINT_SIZE) / ($max_value + 1);
+	my $arr_width = 4 * $max_value / RESULT_WIDTH * $scale;
 
 	my $etap = 1;
 
@@ -281,7 +284,7 @@ sub print_result_to_window {
 	    -Y2    => RESULT_HEIGTH - $scale, 
 	    -X1    => RESULT_WIDTH, 
 	    -Y1    => RESULT_HEIGTH - $scale, 
-	    -WIDTH => 2,
+	    -WIDTH => $arr_width,
 	);
 	$img->filledPolygon($x_line, $blue);
 	$img->polygon($x_line, $blue);
@@ -291,18 +294,18 @@ sub print_result_to_window {
 	    -Y2    => RESULT_HEIGTH - $scale, 
 	    -X1    => $scale, 
 	    -Y1    => 0, 
-	    -WIDTH => 2,
+	    -WIDTH => $arr_width,
 	);
 	$img->filledPolygon($y_line, $blue);
 	$img->polygon($y_line, $blue);
 
-	print $result_fh "1->\n";
 	for my $branch(@$answer) {
-		$img->arc(($points->[$branch->[0] - 1]->{x} + 1) * $scale, RESULT_HEIGTH - ($points->[$branch->[0] - 1]->{y} + 1) * $scale,POINT_SIZE,POINT_SIZE,0,360,$blue);
-		$img->fill(($points->[$branch->[0] - 1]->{x} + 1) * $scale - 5, RESULT_HEIGTH - ($points->[$branch->[0] - 1]->{y} + 1) * $scale - 5, $blue);
+		$img->arc(($points->[$branch->[0] - 1]->{x} + 1) * $scale, RESULT_HEIGTH - ($points->[$branch->[0] - 1]->{y} + 1) * $scale,$arr_width * 6,$arr_width * 6,0,360,$blue);
+		$img->fill(($points->[$branch->[0] - 1]->{x} + 1) * $scale + $arr_width * 1.5, RESULT_HEIGTH - ($points->[$branch->[0] - 1]->{y} + 1) * $scale + $arr_width * 1.5, $blue);
 		$etap++;
-		print $result_fh $branch->[1] . "->\n";
+		print $result_fh $branch->[0] . "->" . $branch->[1] . " = " . $branch->[2] . "\n";
 	}
+	print $result_fh "Нижняя граница: " . "$low_border" . "\n";
 
 	$etap = 1;
 	for my $branch (@$answer) {	
@@ -312,7 +315,7 @@ sub print_result_to_window {
 				-Y2 	=>	RESULT_HEIGTH -  ($points->[$branch->[0] - 1]->{y} + 1) * $scale,
 				-X1 	=>	($points->[$branch->[1] - 1]->{x} + 1) * $scale,
 				-Y1		=>	RESULT_HEIGTH - ($points->[$branch->[0] - 1]->{y} + 1)* $scale,
-				-WIDTH 	=>	4,
+				-WIDTH 	=>	$arr_width,
 
 			);	
 
@@ -326,26 +329,35 @@ sub print_result_to_window {
 			    -Y2    => RESULT_HEIGTH - ($points->[$branch->[0] - 1]->{y} + 1) * $scale, 
 			    -X1    => ($points->[$branch->[1] - 1]->{x} + 1)* $scale, 
 			    -Y1    => RESULT_HEIGTH - ($points->[$branch->[1] - 1]->{y} + 1) * $scale, 
-			    -WIDTH => 4,
+			    -WIDTH => $arr_width,
 			);
 
 			$img->polygon($arrow2, $red);
 			$img->filledPolygon($arrow2, $red);
 		}
 
-		$img->string(gdLargeFont, ($points->[$branch->[1] - 1]->{x} + 1) * $scale - 15, RESULT_HEIGTH - ($points->[$branch->[0] - 1]->{y} + 1) * $scale - 15, $etap, $blue);
+		my $font = "/usr/X11R6/lib/X11/fonts/TTF/luxisri.ttf";
 		$etap++;
 	}
 
-	for (my $i = 0; $i <= $max_value + 1; $i++) {
-		$img->line(0, RESULT_WIDTH - $i*$scale, 20, RESULT_HEIGTH - $i* $scale, $blue);
-		#$img->string(gdLargeFont, 10, RESULT_WIDTH - ($i - 10) * $scale, "X" . $i, $blue);
-		$img->line($i*$scale, RESULT_HEIGTH, $i* $scale,RESULT_HEIGTH - 20, $blue) if $i != 0;
+	$etap = 1;
+	for my $branch (@$answer) {	
+		$img->string(gdGiantFont, ($points->[$branch->[0] - 1]->{x} + 1) * $scale, RESULT_HEIGTH - ($points->[$branch->[0] - 1]->{y} + 1) * $scale, $etap, $black);
+		$etap++;
 	}
 
 	for (my $i = 0; $i <= $max_value + 1; $i++) {
 		$img->dashedLine(0, RESULT_HEIGTH - $i*$scale, RESULT_WIDTH, RESULT_HEIGTH - $i* $scale, $blue);
 		$img->dashedLine($i*$scale, RESULT_HEIGTH, $i* $scale,0, $blue) if $i != 0;
+		$img->line(0, RESULT_WIDTH - $i*$scale, 20, RESULT_HEIGTH - $i* $scale, $blue);
+		$img->line($i*$scale, RESULT_HEIGTH, $i* $scale,RESULT_HEIGTH - 20, $blue) if $i != 0;
+
+		if ($i * $scale % FREQ == 0) {
+			$img->string(gdLargeFont, 0, RESULT_HEIGTH - ($i + 1) * $scale, "Y" . int($i - 1), $green);
+			$img->string(gdLargeFont, $i * $scale, RESULT_WIDTH - $scale, "X" . int($i - 1), $green);
+			$img->line(0, RESULT_WIDTH - $i*$scale, 20, RESULT_HEIGTH - $i* $scale, $green);
+			$img->line($i*$scale, RESULT_HEIGTH, $i* $scale,RESULT_HEIGTH - 20, $green) if $i != 0;
+		}
 	}
 
 	open(my $fh, ">", TMP_FILE_NAME . FORMAT);
@@ -364,7 +376,7 @@ sub print_result_to_window {
 				-Y2 	=>	RESULT_HEIGTH -  ($points->[$branch->[0] - 1]->{y} + 1) * $scale,
 				-X1 	=>	($points->[$branch->[1] - 1]->{x} + 1) * $scale,
 				-Y1		=>	RESULT_HEIGTH - ($points->[$branch->[0] - 1]->{y} + 1)* $scale,
-				-WIDTH 	=>	4,
+				-WIDTH 	=>	$arr_width,
 
 			);	
 
@@ -378,14 +390,13 @@ sub print_result_to_window {
 			    -Y2    => RESULT_HEIGTH - ($points->[$branch->[0] - 1]->{y} + 1) * $scale, 
 			    -X1    => ($points->[$branch->[1] - 1]->{x} + 1)* $scale, 
 			    -Y1    => RESULT_HEIGTH - ($points->[$branch->[1] - 1]->{y} + 1) * $scale, 
-			    -WIDTH => 4,
+			    -WIDTH => $arr_width,
 			);
 
 			$img2->polygon($arrow2, $blue);
 			$img2->filledPolygon($arrow2, $blue);
 		}
 
-		$img2->string(gdLargeFont, ($points->[$branch->[1] - 1]->{x} + 1) * $scale - 15, RESULT_HEIGTH - ($points->[$branch->[0] - 1]->{y} + 1) * $scale - 15, $etap, $blue);
 		open(my $fh, ">", TMP_FILE_NAME . "$etap" . FORMAT);
 
 		print $fh $img2->png;
@@ -416,10 +427,12 @@ sub print_result_to_window {
 
 sub clear_image {
 	clear_entry();
+	$points = [];
 	push @$points, {x => 0, y => 0};
 	$bottom_frame->update();
 	$bottom_frame->destroy();
 	$result_win->destroy;
 	$bottom_frame = $main_frame->Frame(-background => "white")->pack(-side => "bottom", -fill => 'y');
 	$max_value = 0;
+	$default_matrix = [];
 }
