@@ -35,7 +35,6 @@ sub print {
 	}
 
 	print "low border: " . $self->low_border . "\n";
-	print "depth: " . $self->depth . "\n";
 	print "branches: " . join(",", map { sprintf("(%d, %d)", $_->[0], $_->[1] ) } @{$self->path}) . "\n";
 }
 
